@@ -37,3 +37,6 @@ The final SQL analysis identifies the most profitable taxi zones in New York Cit
 1. Configure a Databricks Cluster (Single User mode recommended).
 2. Set up a Secret Scope named `azure-storage` with your Azure Key.
 3. Run the notebooks in order: `01_Ingestion`, `02_Silver_Transformation`, `03_Gold_Analysis`.
+
+### ERD + High Level
+<img width="2816" height="1536" alt="erd+highlevel" src="https://github.com/user-attachments/assets/b90ae488-9a24-4bce-8375-714afc357aa0" />
