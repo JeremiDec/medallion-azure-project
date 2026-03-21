@@ -2,8 +2,11 @@
 
 # NYC Taxi Data Processing - Medallion Architecture
 
-## Project Overview
-This project implements a scalable data pipeline using **Azure Databricks** and **Azure Blob Storage** to process 15GB of raw NYC Yellow Taxi trip data (covering years 2014-2024). The architecture follows the **Medallion design pattern** (Bronze, Silver, Gold) to transform raw, inconsistent data into high-value business insights.
+Initial Problem Statement
+Celem projektu jest analiza wydajności i rentowności usług Yellow Taxi w Nowym Jorku na przestrzeni dekady (2014-2024). Przetwarzając **15 GB surowych danych**, potok (pipeline) identyfikuje najbardziej dochodowe strefy oraz trendy w przychodach. Projekt demonstruje budowę skalowalnej architektury typu Lakehouse w chmurze Azure przy użyciu standardu Medallion, rozwiązując realne problemy niespójności danych historycznych.
+
+## 2. Architecture & Data Flow
+Projekt realizuje wzorzec **Medallion Architecture**, zapewniając czystość i spójność danych na każdym etapie przetwarzania.
 
 ## Tech Stack
 - **Compute:** Azure Databricks (Runtime 14.3 LTS, Apache Spark 3.5.0)
