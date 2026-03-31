@@ -1,0 +1,28 @@
+resources:
+  jobs:
+    nyc_taxi_pipeline:
+      name: "nyc_taxi_medallion_pipeline"
+      description: "Medalion pipeline: Bronze → Silver → Gold for NYC Yellow Taxi data (2014-2024)"
+
+      tasks:
+        - task_key: bronze_ingestion
+          description: "Ingestia surowych plików Parquet do warstwy Bronze"
+          notebook_task:
+            notebook_path: ./01_Ingestion_Bronze.ipynb
+            source: WORKSPACE
+
+        - task_key: silver_cleaning
+          description: "Czyszczenie, walidacja i deduplikacja danych"
+          depends_on:
+            - task_key: bronze_ingestion
+          notebook_task:
+            notebook_path: ./02_Silver_cleaning.ipynb
+            source: WORKSPACE
+
+        - task_key: gold_analysis
+          description: "Agregacje biznesowe i JOIN z taxi_zones"
+          depends_on:
+            - task_key: silver_cleaning
+          notebook_task:
+            notebook_path: ./03_Gold_Analysis.ipynb
+            source: WORKSPACE

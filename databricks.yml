@@ -1,0 +1,11 @@
+bundle:
+  name: nyc_taxi_medallion_pipeline
+
+workspace:
+  host: https://adb-1234567890123456.7.azuredatabricks.net
+
+include:
+  - resources/*.yml
+
+
+
