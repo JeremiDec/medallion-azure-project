@@ -108,6 +108,36 @@ Jorku, dostarczając informacji o:
 
 ---
 
+
+## Orkiestracja Pipeline'u
+
+Pipeline jest orkiestrowany przez **Databricks Workflows** jako Job z trzema 
+zależnymi taskami:
+
+bronze_ingestion → silver_cleaning → gold_analysis
+
+### Single Entry Point
+Pipeline uruchamia się jednym kliknięciem "Run Now" w Databricks Workflows, 
+albo komendą:
+```bash
+databricks bundle deploy
+databricks bundle run nyc_taxi_pipeline
+```
+
+### Idempotentność
+Notebook `01_Ingestion_Bronze` zawiera check, który pomija ingestię jeśli 
+dane już istnieją w warstwie Bronze. Dzięki temu wielokrotne uruchomienie 
+pipeline'u nie powoduje duplikacji ani ponownego pobierania 15 GB danych.
+
+### Pipeline as Code
+Definicja workflow jest wersjonowana w Git jako Databricks Asset Bundle 
+(`databricks.yml` + `resources/nyc_taxi_pipeline.yml`).
+
+<img width="1128" height="215" alt="workflow_dag" src="https://github.com/user-attachments/assets/ecf9f248-f286-4e59-b276-8ef36ac7e7e7" />
+
+
+---
+
 ### ERD + High Level
 <img width="2816" height="1536" alt="erd+highlevel" src="https://github.com/user-attachments/assets/b90ae488-9a24-4bce-8375-714afc357aa0" />
 
