@@ -143,6 +143,14 @@ Definicja workflow jest wersjonowana w Git jako Databricks Asset Bundle
 
 ---
 
+## Architektura Pipeline'u
+
+
+<img width="1261" height="550" alt="pipeline_architecture drawio" src="https://github.com/user-attachments/assets/e08a9426-bc35-44d4-8b54-5b1817574939" />
+
+
+---
+
 ## Jak Uruchomić Projekt
 
 **Wymagania wstępne:**
