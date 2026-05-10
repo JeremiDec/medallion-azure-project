@@ -1,0 +1,175 @@
+---
+# Data Product Contract — NYC Yellow Taxi Revenue Insights
+# Version: 2.0
+# Last updated: 2026-05-10
+
+product:
+  name: "NYC Yellow Taxi Revenue Insights"
+  version: "2.0"
+  owner: "Jeremi Dec"
+  contact: "s36169@pjwstk.edu.pl"
+  domain: "Urban mobility / Transportation"
+  status: "Production-like"
+
+purpose: |
+  Aggregated revenue and trip analytics for NYC Yellow Taxi services (2014-2022).
+  Enables identification of the most profitable taxi zones by borough, seasonal 
+  revenue trends, and trip distance comparisons across NYC neighborhoods.
+  Built on 150M+ trip records (15 GB) using Azure Lakehouse Medallion architecture.
+
+primary_users:
+  - City planners and urban mobility researchers
+  - Taxi and ride-hail companies
+  - Data analysts studying transportation patterns
+  - Students learning big data pipelines
+
+data_sources:
+  - name: "NYC TLC Trip Record Data"
+    type: "Parquet files (web download)"
+    url: "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
+    refresh: "Monthly (historical, 2014-2022)"
+  - name: "NYC Taxi Zone Lookup"
+    type: "CSV file"
+    url: "https://d37ci6vzurychx.cloudfront.net/misc/taxi+_zone_lookup.csv"
+    refresh: "Static"
+  - name: "Azure Event Hubs"
+    type: "Streaming queue (Kafka-compatible)"
+    refresh: "Real-time (demo mode)"
+
+schema:
+  table_name: "gold.taxi_analysis"
+  format: "Parquet (batch) / Delta Lake (streaming)"
+  storage: "Azure Blob Storage (WASBS)"
+  columns:
+    - name: "Borough"
+      type: "string"
+      description: "NYC borough name from taxi_zones lookup table"
+      example: "Manhattan"
+      nullable: false
+    - name: "Zone"
+      type: "string"
+      description: "Specific taxi zone within the borough"
+      example: "Upper East Side North"
+      nullable: false
+    - name: "total_trips"
+      type: "long"
+      description: "Total number of taxi trips originating in this zone"
+      example: 12450320
+      nullable: false
+    - name: "total_revenue"
+      type: "double"
+      description: "Sum of total_amount (fare + tips + surcharges) in USD"
+      example: 185723450.50
+      nullable: false
+    - name: "avg_distance"
+      type: "double"
+      description: "Average trip distance in miles for this zone"
+      example: 3.42
+      nullable: false
+    - name: "ingestion_timestamp"
+      type: "timestamp"
+      description: "When the data was last processed by the pipeline"
+      example: "2026-05-10T14:30:00Z"
+      nullable: false
+
+refresh:
+  frequency: "On-demand (batch) / Continuous (streaming)"
+  batch_trigger: "Databricks Workflows"
+  streaming_trigger: "Spark Structured Streaming via Azure Event Hubs"
+  batch_size: "~150M rows total (full historical reload)"
+  streaming_batch: "~5000 rows per demo run"
+
+access:
+  # --- QUICK START (no login required) ---
+  public_csv: "https://medallionazure.blob.core.windows.net/public-data/gold_taxi_analysis.csv"
+  public_parquet: "https://medallionazure.blob.core.windows.net/public-data/gold_taxi_analysis.parquet"
+  how_to_use: |
+    No login or credentials needed. Choose one:
+
+    1. BROWSER: paste the CSV link into your browser - file downloads automatically.
+       Open in Excel, Google Sheets, or any spreadsheet tool.
+
+    2. PYTHON (pandas):
+       import pandas as pd
+       df = pd.read_csv("https://medallionazure.blob.core.windows.net/public-data/gold_taxi_analysis.csv")
+       print(df.head())
+
+    3. EXCEL: Data tab > From Web > paste the CSV link > Load.
+
+    4. R:
+       df <- read.csv("https://medallionazure.blob.core.windows.net/public-data/gold_taxi_analysis.csv")
+       head(df)
+
+  # --- FULL PIPELINE (requires Azure) ---
+  repository: "https://github.com/JeremiDec/medallion-azure-project"
+  marketplace: "MS Teams / Big Data / Data Marketplace"
+  full_pipeline_requirements:
+    - "Azure subscription with Databricks workspace"
+    - "Azure Blob Storage access (key via Databricks Secret Scope)"
+    - "Databricks cluster (Runtime 14.3 LTS, Single User mode)"
+    - "Maven library: com.microsoft.azure:azure-eventhubs-spark_2.12:2.3.22 (for streaming)"
+
+quality_metrics:
+  - metric: "Completeness"
+    definition: "Percentage of non-null values in key columns (Borough, Zone, fare_amount, trip_distance)"
+    current_value: "99.8%"
+    threshold: "> 98%"
+    cadence: "Every pipeline run"
+  - metric: "Validity"
+    definition: "Percentage of records passing business rules: fare_amount > 0, passenger_count > 0, dropoff > pickup"
+    current_value: "97.2%"
+    threshold: "> 95%"
+    cadence: "Every pipeline run"
+  - metric: "Row Count"
+    definition: "Total number of records in Gold layer after aggregation"
+    current_value: "260 zones"
+    threshold: "> 200 zones"
+    cadence: "Every pipeline run"
+  - metric: "Freshness"
+    definition: "Time since last successful pipeline execution"
+    current_value: "< 1 day"
+    threshold: "< 7 days"
+    cadence: "Weekly check"
+  - metric: "Uniqueness"
+    definition: "Percentage of unique Borough+Zone combinations (no duplicate aggregations)"
+    current_value: "100%"
+    threshold: "100%"
+    cadence: "Every pipeline run"
+
+known_limitations:
+  - "Data covers 2014-2022 only; 2023+ years not yet ingested"
+  - "Schema evolution across years causes type conflicts (INT vs BIGINT)"
+  - "~2.8% of raw records filtered out due to invalid fares, zero passengers, or impossible trip times"
+  - "Streaming pipeline runs in demo mode with ~5000 records"
+  - "Public CSV/Parquet contains aggregated Gold data only - individual trip records require full pipeline access"
+
+example_usage:
+  business_question: "Which NYC borough generates the highest taxi revenue?"
+  quick_start_python: |
+    import pandas as pd
+
+    url = "https://medallionazure.blob.core.windows.net/public-data/gold_taxi_analysis.csv"
+    df = pd.read_csv(url)
+
+    # Revenue by borough
+    print(df.groupby("Borough")["total_revenue"].sum().sort_values(ascending=False))
+
+    # Simple bar chart
+    import matplotlib.pyplot as plt
+    df.groupby("Borough")["total_revenue"].sum().sort_values().plot(kind="barh")
+    plt.xlabel("Total Revenue (USD)")
+    plt.title("NYC Taxi Revenue by Borough")
+    plt.tight_layout()
+    plt.show()
+
+  databricks_sql: |
+    SELECT Borough, SUM(total_revenue) AS revenue, SUM(total_trips) AS trips
+    FROM gold.taxi_analysis GROUP BY Borough ORDER BY revenue DESC;
+
+pipeline:
+  architecture: "Medallion (Bronze > Silver > Gold)"
+  orchestration: "Databricks Workflows (DAB - YAML config in Git)"
+  batch_flow: "NYC TLC Parquet > bronze/yellow_taxi > silver/yellow_taxi > gold/taxi_analysis"
+  streaming_flow: "Producer > Azure Event Hubs (taxi-rides) > Structured Streaming > streaming/bronze (Delta)"
+  idempotency: "Bronze ingestion checks for existing data before downloading"
+  security: "Azure Key Vault > Databricks Secret Scope (credentials never in source code)"
