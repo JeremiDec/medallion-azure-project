@@ -1,0 +1,140 @@
+<mxfile host="app.diagrams.net" modified="2026-04-10T20:00:00.000Z" agent="Claude" version="22.1.16" type="device">
+  <diagram name="NYC Taxi Pipeline" id="nyc-taxi-pipeline">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="NYC Yellow Taxi — Pipeline Architecture (Batch + Streaming)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1A1A1A;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="900" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== BATCH PIPELINE ===== -->
+        <mxCell id="batch_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="1320" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="batch_title" value="📦 BATCH PIPELINE — Dane historyczne (Databricks Workflows)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="60" y="90" width="600" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Orchestration layer -->
+        <mxCell id="orch_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#ff8c00;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="120" width="740" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="orch_title" value="⚙️ Orchestration: Databricks Workflows (DAB)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#cc6600;" vertex="1" parent="1">
+          <mxGeometry x="310" y="125" width="740" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="task1" value="Task 1&#xa;bronze_ingestion&#xa;✓ Idempotent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#ff8c00;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="330" y="150" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="task2" value="Task 2&#xa;silver_cleaning&#xa;depends_on: T1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#ff8c00;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="590" y="150" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="task3" value="Task 3&#xa;gold_analysis&#xa;depends_on: T2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#ff8c00;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="860" y="150" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="warrow1" style="endArrow=classic;html=1;rounded=0;strokeColor=#ff8c00;strokeWidth=2;" edge="1" parent="1" source="task1" target="task2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="warrow2" style="endArrow=classic;html=1;rounded=0;strokeColor=#ff8c00;strokeWidth=2;" edge="1" parent="1" source="task2" target="task3"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Source -->
+        <mxCell id="source" value="NYC Open Data&#xa;&#xa;Yellow Taxi&#xa;2014–2022&#xa;(~15 GB)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="250" width="150" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Bronze batch -->
+        <mxCell id="bronze" value="🥉 BRONZE&#xa;&#xa;Raw Parquet&#xa;15 GB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="310" y="250" width="160" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Silver batch -->
+        <mxCell id="silver" value="🥈 SILVER&#xa;&#xa;Cleaned&#xa;Validated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="590" y="250" width="160" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Gold batch -->
+        <mxCell id="gold" value="🥇 GOLD&#xa;&#xa;Aggregated&#xa;JOIN taxi_zones" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="860" y="250" width="160" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Analytics -->
+        <mxCell id="analytics" value="📊 Analytics&#xa;&#xa;SQL Queries&#xa;Dashboards" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="250" width="140" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Batch arrows -->
+        <mxCell id="a1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1" source="source" target="bronze"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a2" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1" source="bronze" target="silver"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a3" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1" source="silver" target="gold"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="a4" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;" edge="1" parent="1" source="gold" target="analytics"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== STREAMING PIPELINE ===== -->
+        <mxCell id="stream_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#43a047;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="1060" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="stream_title" value="🔴 STREAMING PIPELINE — Dane real-time (Spark Structured Streaming)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#2e7d32;" vertex="1" parent="1">
+          <mxGeometry x="60" y="430" width="600" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Producer -->
+        <mxCell id="producer" value="04_Stream&#xa;Producer&#xa;&#xa;Symuluje dane&#xa;z taksówek&#xa;(JSON)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="480" width="150" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Event Hubs -->
+        <mxCell id="eventhubs" value="📨 Azure&#xa;Event Hubs&#xa;&#xa;Kolejka (Queue)&#xa;Kafka-compatible&#xa;taxi-rides" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#ef6c00;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="310" y="480" width="180" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Structured Streaming -->
+        <mxCell id="streaming" value="⚡ Spark&#xa;Structured&#xa;Streaming&#xa;&#xa;Auto-read&#xa;Checkpoints" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#43a047;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="590" y="480" width="160" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Streaming Bronze -->
+        <mxCell id="stream_bronze" value="🥉 BRONZE&#xa;Streaming&#xa;&#xa;Delta Lake&#xa;ACID transactions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="860" y="480" width="160" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Streaming arrows -->
+        <mxCell id="sa1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#43a047;" edge="1" parent="1" source="producer" target="eventhubs"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="sa2" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#43a047;" edge="1" parent="1" source="eventhubs" target="streaming"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="sa3" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#43a047;" edge="1" parent="1" source="streaming" target="stream_bronze"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== STORAGE LAYER ===== -->
+        <mxCell id="storage_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f2ff;strokeColor=#0066cc;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="1320" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="storage_title" value="💾 STORAGE LAYER — Azure Blob Storage (WASBS)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#0066cc;" vertex="1" parent="1">
+          <mxGeometry x="40" y="690" width="1320" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="s1" value="bronze/yellow_taxi/&#xa;Parquet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0066cc;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="720" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="silver/yellow_taxi/&#xa;Cleaned Parquet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0066cc;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="280" y="720" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="gold/taxi_analysis/&#xa;Aggregated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#0066cc;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="500" y="720" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="streaming/bronze/&#xa;Delta Lake" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="720" y="720" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="s5" value="streaming/_checkpoints/&#xa;Fault tolerance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#43a047;fontSize=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="940" y="720" width="180" height="45" as="geometry" />
+        </mxCell>
+        
+        <!-- Footer -->
+        <mxCell id="footer1" value="🔧 Processing: Apache Spark on Azure Databricks (Runtime 14.3 LTS) — PySpark + Spark SQL + Structured Streaming" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="100" y="810" width="1200" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="footer2" value="🔒 Security: Azure Key Vault → Databricks Secret Scope (storage + Event Hubs credentials never in source code)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2;fontColor=#555555;" vertex="1" parent="1">
+          <mxGeometry x="100" y="835" width="1200" height="25" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
