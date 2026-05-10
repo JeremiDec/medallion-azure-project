@@ -8,46 +8,52 @@ identyfikuje najbardziej dochodowe strefy oraz trendy przychodowe. Projekt demon
 budowę skalowalnej architektury typu **Lakehouse w chmurze Azure** przy użyciu standardu
 Medallion, rozwiązując realne problemy niespójności danych historycznych.
 
+Projekt implementuje dwa tryby przetwarzania:
+- **Batch Pipeline** — hurtowe przetwarzanie danych historycznych (Bronze → Silver → Gold)
+- **Streaming Pipeline** — przetwarzanie strumieniowe w czasie rzeczywistym z użyciem kolejki Azure Event Hubs
+
 ---
 
 ## Architektura i Przepływ Danych
 
 Projekt realizuje wzorzec **Architektury Medalionowej**, zapewniając czystość i spójność
 danych na każdym etapie przetwarzania.
+
 ```
-[Źródło: NYC Open Data]
-        │
-        ▼
-┌───────────────┐
-│  🥉 BRONZE    │  Surowe pliki Parquet (15 GB)
-│  Warstwa RAW  │  Bezpośrednia ingestia z NYC Open Data
-└───────┬───────┘
-        │
-        ▼
-┌───────────────┐
-│  🥈 SILVER    │  Dane oczyszczone i zwalidowane
-│  Warstwa      │  Filtry jakości, deduplikacja
-│  CLEANED      │
-└───────┬───────┘
-        │
-        ▼
-┌───────────────┐
-│  🥇 GOLD      │  Zagregowane dane biznesowe
-│  Warstwa      │  Przychody wg dzielnic Nowego Jorku
-│  CURATED      │
-└───────────────┘
+                        ┌─────────────────────────────────────────────────────┐
+                        │          BATCH PIPELINE (dane historyczne)          │
+                        │                                                     │
+[Źródło: NYC Open Data] │  ┌──────────┐    ┌──────────┐    ┌──────────┐      │
+        │               │  │ 🥉 BRONZE│───▶│ 🥈 SILVER│───▶│ 🥇 GOLD  │      │
+        └──────────────▶│  │  RAW     │    │ CLEANED  │    │ CURATED  │      │
+                        │  └──────────┘    └──────────┘    └──────────┘      │
+                        └─────────────────────────────────────────────────────┘
+
+                        ┌─────────────────────────────────────────────────────┐
+                        │       STREAMING PIPELINE (dane real-time)           │
+                        │                                                     │
+[Producer: symulacja    │  ┌──────────┐    ┌──────────┐                      │
+ danych taksówek]       │  │ 📨 EVENT │    │ 🥉 BRONZE│                      │
+        │               │  │   HUBS   │───▶│ STREAMING│                      │
+        └──────────────▶│  │  (Queue) │    │  (Delta) │                      │
+                        │  └──────────┘    └──────────┘                      │
+                        └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Stos Technologiczny
 
-| Warstwa       | Technologia                                        |
-|---------------|----------------------------------------------------|
-| **Obliczenia**| Azure Databricks (Runtime 14.3 LTS, Spark 3.5.0)  |
-| **Storage**   | Azure Blob Storage (protokół WASBS)                |
-| **Język**     | PySpark, Spark SQL, Python                         |
-| **Bezpieczeństwo** | Databricks Secrets API                        |
+| Warstwa            | Technologia                                        |
+|--------------------|----------------------------------------------------|
+| **Obliczenia**     | Azure Databricks (Runtime 14.3 LTS, Spark 3.5.0)  |
+| **Storage**        | Azure Blob Storage (protokół WASBS)                |
+| **Kolejka**        | Azure Event Hubs (Kafka-compatible)                |
+| **Streaming**      | Spark Structured Streaming                         |
+| **Format danych**  | Parquet (batch), Delta Lake (streaming)            |
+| **Język**          | PySpark, Spark SQL, Python                         |
+| **Bezpieczeństwo** | Azure Key Vault + Databricks Secret Scope          |
+| **Orkiestracja**   | Databricks Workflows + Asset Bundles (YAML)        |
 
 ---
 
@@ -56,6 +62,7 @@ danych na każdym etapie przetwarzania.
 ### 🥉 Warstwa Bronze — Surowe Dane
 - Bezpośrednia ingestia **15 GB plików Parquet** z NYC Open Data
 - Dane przechowywane w oryginalnej, niezmienionej postaci
+- Check idempotentności — pomija ingestię jeśli dane już istnieją
 
 ### 🥈 Warstwa Silver — Dane Oczyszczone
 Zastosowane filtry jakości danych:
@@ -71,50 +78,58 @@ Zastosowane filtry jakości danych:
 
 ---
 
-## Wyzwania Techniczne i Rozwiązania
+## Przetwarzanie Strumieniowe (Streaming Pipeline)
 
-### ⚠️ Kryzys Ewolucji Schematu
-**Problem:** `ClassCastException` spowodowany zmianami typów danych w plikach Parquet
-na przestrzeni lat (zmiana `INT64` → `DOUBLE`).
+Oprócz batch pipeline'u, projekt implementuje **przetwarzanie strumieniowe** 
+z użyciem kolejki komunikatów i Spark Structured Streaming.
 
-**Rozwiązanie:** Wdrożenie iteracyjnego procesu łączenia plików (`union`) z
-jawnym wymuszaniem schematu i ręcznym rzutowaniem typów podczas ingestii.
+### Architektura Streamingu
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  04_Stream        │     │  Azure Event     │     │  05_Stream        │
+│  Producer         │────▶│  Hubs            │────▶│  Consumer         │
+│                   │     │  (kolejka)       │     │                   │
+│  Czyta dane z     │     │  Buforuje i      │     │  Spark Structured │
+│  Silver, wysyła   │     │  kolejkuje       │     │  Streaming czyta  │
+│  JSON do kolejki  │     │  wiadomości      │     │  i zapisuje do    │
+│                   │     │                  │     │  Bronze (Delta)   │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+```
+
+### Komponenty
+
+**Producer (`04_Stream_Producer`)** — symuluje źródło danych taksówkowych. 
+Czyta rekordy z warstwy Silver i wysyła je jako JSON do kolejki Azure Event Hubs. 
+W środowisku produkcyjnym rolę producenta pełniłyby systemy GPS w taksówkach.
+
+**Queue — Azure Event Hubs** — zarządzana kolejka komunikatów kompatybilna z protokołem 
+Apache Kafka. Buforuje wiadomości między producentem a konsumentem, zapewniając 
+odporność na awarie i skalowalność. Namespace: `nyc-taxi-streaming`, 
+Event Hub: `taxi-rides`.
+
+**Consumer (`05_Stream_Consumer`)** — Spark Structured Streaming nasłuchuje 
+Event Hubs w trybie ciągłym. Automatycznie odbiera nowe wiadomości, parsuje JSON 
+i zapisuje dane do Streaming Bronze w formacie Delta Lake. Wykorzystuje checkpointy 
+do zapewnienia exactly-once processing.
+
+### Dlaczego Delta Lake?
+Streaming zapisuje dane w formacie **Delta Lake** (nie Parquet) ponieważ:
+- Obsługuje transakcje ACID — bezpieczny zapis z wielu strumieni
+- Wspiera checkpointy — odporność na awarie
+- Schema enforcement — automatyczna walidacja schematu
+- Time travel — możliwość przejrzenia historii zmian
 
 ---
 
-### ⚡ Przetwarzanie na Dużą Skalę
-**Problem:** Obsługa ponad **150 milionów rekordów (15 GB)** w jednym potoku.
+## Orkiestracja Pipeline'u (Batch)
 
-**Rozwiązanie:** Wyłączenie Wektoryzowanego Czytnika Parquet (`Vectorized Parquet
-Reader`), co zapewniło elastyczność typów i stabilność przetwarzania.
-
----
-
-### 🔒 Bezpieczeństwo Danych
-**Problem:** Ryzyko ujawnienia kluczy dostępowych Azure w publicznym repozytorium.
-
-**Rozwiązanie:** Integracja z **Databricks Secrets API** — klucze dostępowe są
-maskowane i nigdy nie pojawiają się w kodzie źródłowym.
-
----
-
-## Wnioski Biznesowe
-
-Końcowa analiza SQL identyfikuje **najbardziej dochodowe strefy taksówkowe** w Nowym
-Jorku, dostarczając informacji o:
-- łącznych przychodach w podziale na strefy i dzielnice
-- liczbie przejazdów w każdej lokalizacji
-- średniej odległości przejazdu na borough
-
----
-
-
-## Orkiestracja Pipeline'u
-
-Pipeline jest orkiestrowany przez **Databricks Workflows** jako Job z trzema 
+Pipeline batch jest orkiestrowany przez **Databricks Workflows** jako Job z trzema 
 zależnymi taskami:
 
+```
 bronze_ingestion → silver_cleaning → gold_analysis
+```
 
 ### Single Entry Point
 Pipeline uruchamia się jednym kliknięciem "Run Now" w Databricks Workflows, 
@@ -135,19 +150,69 @@ Definicja workflow jest wersjonowana w Git jako Databricks Asset Bundle
 
 <img width="1128" height="215" alt="workflow_dag" src="https://github.com/user-attachments/assets/ecf9f248-f286-4e59-b276-8ef36ac7e7e7" />
 
+---
+
+## Wyzwania Techniczne i Rozwiązania
+
+### ⚠️ Kryzys Ewolucji Schematu
+**Problem:** `ClassCastException` spowodowany zmianami typów danych w plikach Parquet
+na przestrzeni lat (zmiana `INT64` → `DOUBLE`).
+
+**Rozwiązanie:** Wdrożenie iteracyjnego procesu łączenia plików (`union`) z
+jawnym wymuszaniem schematu i ręcznym rzutowaniem typów podczas ingestii.
+
+### ⚡ Przetwarzanie na Dużą Skalę
+**Problem:** Obsługa ponad **150 milionów rekordów (15 GB)** w jednym potoku.
+
+**Rozwiązanie:** Wyłączenie Wektoryzowanego Czytnika Parquet (`Vectorized Parquet
+Reader`), co zapewniło elastyczność typów i stabilność przetwarzania.
+
+### 🔒 Bezpieczeństwo Danych
+**Problem:** Ryzyko ujawnienia kluczy dostępowych Azure w publicznym repozytorium.
+
+**Rozwiązanie:** Integracja z **Azure Key Vault + Databricks Secret Scope** — 
+klucze dostępowe (storage, Event Hubs) są maskowane i nigdy nie pojawiają się 
+w kodzie źródłowym.
 
 ---
 
-### ERD + High Level
+## Wnioski Biznesowe
+
+Końcowa analiza SQL identyfikuje **najbardziej dochodowe strefy taksówkowe** w Nowym
+Jorku, dostarczając informacji o:
+- łącznych przychodach w podziale na strefy i dzielnice
+- liczbie przejazdów w każdej lokalizacji
+- średniej odległości przejazdu na borough
+
+---
+
+## ERD + High Level
+
 <img width="2816" height="1536" alt="erd+highlevel" src="https://github.com/user-attachments/assets/b90ae488-9a24-4bce-8375-714afc357aa0" />
 
 ---
 
 ## Architektura Pipeline'u
 
+<img width="1322" height="840" alt="nycpipelinearchitecture" src="https://github.com/user-attachments/assets/2b914c48-a0e1-4baa-9150-16218dda63d8" />
 
-<img width="1261" height="550" alt="pipeline_architecture drawio" src="https://github.com/user-attachments/assets/e08a9426-bc35-44d4-8b54-5b1817574939" />
+---
 
+## Struktura Repozytorium
+
+```
+├── 01_Ingestion_Bronze.ipynb      # Ingestia danych historycznych (batch)
+├── 02_Silver_cleaning.ipynb       # Czyszczenie i walidacja danych
+├── 03_Gold_Analysis.ipynb         # Agregacje biznesowe (JOIN, GROUP BY)
+├── 04_Stream_Producer.ipynb       # Producent — wysyła dane do Event Hubs
+├── 05_Stream_Consumer.ipynb       # Konsument — Structured Streaming z Event Hubs
+├── databricks.yml                 # Databricks Asset Bundle — konfiguracja
+├── resources/
+│   └── nyc_taxi_pipeline.yml      # Definicja Workflow (pipeline as code)
+├── pipeline_architecture.drawio   # Diagram architektury (edytowalny)
+├── workflow_dag.png               # Screenshot DAG z Databricks Workflows
+└── README.md
+```
 
 ---
 
@@ -156,20 +221,22 @@ Definicja workflow jest wersjonowana w Git jako Databricks Asset Bundle
 **Wymagania wstępne:**
 - Aktywna subskrypcja Azure z zasobem Databricks
 - Konto Azure Blob Storage z danymi NYC Taxi
+- Azure Event Hubs namespace (dla streamingu)
 
-**Kroki:**
+**Kroki — Batch Pipeline:**
 
-1. **Skonfiguruj klaster Databricks**
-   - Tryb: Single User (zalecany)
-   - Runtime: 14.3 LTS
-
-2. **Skonfiguruj Secret Scope**
-   - Nazwa scope: `azure-storage`
-   - Dodaj klucz dostępowy do Azure Blob Storage
-
-3. **Uruchom notebooki w kolejności:**
+1. Skonfiguruj klaster Databricks (Single User, Runtime 14.3 LTS)
+2. Zainstaluj bibliotekę Maven: `com.microsoft.azure:azure-eventhubs-spark_2.12:2.3.22`
+3. Skonfiguruj Secret Scope (`azure-storage`) z kluczami:
+   - `storagekeybdg` — klucz dostępowy Azure Blob Storage
+   - `eventhubs-connection-string` — connection string Event Hubs
+4. Uruchom Workflow "Run Now" lub notebooki w kolejności:
 ```
-01_Ingestion.ipynb        →  Ingestia surowych danych (Bronze)
-02_Silver_Transformation  →  Czyszczenie i walidacja (Silver)
-03_Gold_Analysis          →  Agregacje biznesowe (Gold)
+01_Ingestion_Bronze  →  02_Silver_cleaning  →  03_Gold_Analysis
 ```
+
+**Kroki — Streaming Pipeline:**
+
+1. Uruchom `04_Stream_Producer` — wysyła dane do Event Hubs
+2. Uruchom `05_Stream_Consumer` — Structured Streaming czyta z kolejki
+3. Streaming działa ciągle do momentu zatrzymania (`query.stop()`)
